@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Título y Favicon -->
+    <title>Cun.cl - Contador de Plata en Efectivo</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+
+    <!-- Metadatos SEO Principales -->
+    <meta name="description" content="Cuenta tu dinero en efectivo (monedas y billetes chilenos) de forma rápida y sencilla. Guarda tus conteos en la nube, genera informes y revisa estadísticas. ¡La herramienta perfecta para tu alcancía o caja chica!">
+    <meta name="keywords" content="contador de dinero, contador de plata, contador de efectivo, chile, clp, monedas, billetes, cun.cl, contar plata, caja chica">
+    <link rel="canonical" href="https://cun.cl/">
+
+    <!-- Metadatos Open Graph (para Redes Sociales como Facebook, WhatsApp) -->
+    <meta property="og:title" content="Cun.cl - Contador de Plata en Efectivo">
+    <meta property="og:description" content="La forma más fácil de contar tus monedas y billetes chilenos. Guarda tus conteos, genera informes y más.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cun.cl/">
+    <meta property="og:image" content="https://placehold.co/1200x630/1e293b/f1f5f9?text=Cun.cl&font=poppins">
+    <meta property="og:image:alt" content="Logo de Cun.cl sobre un fondo oscuro">
+    <meta property="og:locale" content="es_CL">
+
+    <!-- Metadatos Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cun.cl - Contador de Plata en Efectivo">
+    <meta name="twitter:description" content="La forma más fácil de contar tus monedas y billetes chilenos. Guarda tus conteos, genera informes y más.">
+    <meta name="twitter:image" content="https://placehold.co/1200x630/1e293b/f1f5f9?text=Cun.cl&font=poppins">
+    <meta name="twitter:image:alt" content="Logo de Cun.cl sobre un fondo oscuro">
+
+    <!-- Dependencias -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .main-content {
+            flex-grow: 1;
+        }
+        .total-display {
+            position: sticky;
+            bottom: 0;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .grand-total-flash {
+            animation: flash 0.5s ease;
+        }
+        @keyframes flash {
+            0% { color: #fff; transform: scale(1); }
+            50% { color: #4ade80; transform: scale(1.1); }
+            100% { color: #fff; transform: scale(1); }
+        }
+
+        /* --- Estilos y transiciones de las tarjetas --- */
+        .currency-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #2a2d32;
+            border: 2px solid transparent;
+        }
+        .currency-card.is-active {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            border-color: #4ade80;
+        }
+        /* FIX: Anula el transform y la sombra cuando la sección está cerrada para evitar que se vea */
+        .section:not(.is-open) .currency-card {
+            transform: none;
+            box-shadow: none;
+        }
+        .currency-card-inner, .icon-container, .card-details, .controls-container, .subtotal-container {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* --- Lógica de la animación de llenado --- */
+        .icon-clip-rect { transform: scaleX(0); transform-origin: left; transition: transform 0.4s cubic-bezier(0.77, 0, 0.175, 1); }
+        .is-active .icon-clip-rect { transform: scaleX(1); }
+        .icon-text-fill { opacity: 0; transition: opacity 0.3s 0.1s ease-in-out; }
+        .is-active .icon-text-fill { opacity: 1; }
+        .icon-text-outline { transition: opacity 0.2s ease-in-out; }
+        .is-active .icon-text-outline { opacity: 0; }
+
+        /* --- ANIMACIÓN DE CONTORNOS --- */
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes dash-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -260; } }
+
+        .coin-outline-group-outer, .coin-outline-group-inner, .bill-outline {
+            transform-origin: center;
+        }
+        .coin-outline-group-outer.is-animating {
+            animation: spin 8s linear infinite;
+            animation-play-state: paused;
+        }
+        .coin-outline-group-inner.is-animating {
+            animation: spin 12s linear infinite reverse;
+            animation-play-state: paused;
+        }
+        .bill-outline.is-animating {
+            animation: dash-flow 5s linear infinite;
+            animation-play-state: paused;
+        }
+        .currency-card.is-active .is-animating {
+            animation-play-state: running;
+        }
+
+        /* --- Lógica de las secciones desplegables con animación --- */
+        .section-header { cursor: pointer; }
+        .section-content-wrapper { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.5s cubic-bezier(0.25, 0.1, 0.25, 1.0); }
+        .section.is-open .section-content-wrapper { grid-template-rows: 1fr; }
+        .section-content { 
+            overflow: hidden; 
+            gap: 1.5rem;
+        }
+        .chevron { transition: transform 0.3s ease-out; }
+        .section.is-open .chevron { transform: rotate(90deg); }
+
+        /* --- Estilos de Vistas (Grid y Lista) con Layout Responsivo --- */
+        .section-content.view-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        }
+        .view-grid .currency-card-inner { flex-direction: column; align-items: center; }
+        .view-grid .icon-container { width: 7rem; height: 7rem; margin-bottom: 1rem; }
+        .view-grid .card-details { align-items: center; }
+
+        .section-content.view-list {
+            display: flex;
+            flex-direction: column;
+        }
+        .view-list .currency-card { width: 100%; }
+        .view-list .currency-card-inner { flex-direction: row; justify-content: space-between; align-items: center; }
+        .view-list .icon-container { width: 4rem; height: 4rem; }
+        .view-list .card-details { align-items: flex-start; flex-grow: 1; margin-left: 1rem; }
+        .view-list .controls-container { margin: 0; margin-left: 1rem; }
+        .view-list .subtotal-container { display: none; }
+
+        /* --- Lógica del Slider de Vistas --- */
+        .view-toggle-container { position: relative; }
+        .view-toggle-slider { position: absolute; top: 0; left: 0; width: 50%; height: 100%; background-color: #334155; border-radius: 0.375rem; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .view-toggle-container.mode-list .view-toggle-slider { transform: translateX(100%); }
+        .view-toggle-btn { position: relative; z-index: 10; color: #94a3b8; transition: color 0.3s ease; }
+        .view-toggle-btn.is-active { color: #fff; }
+
+        /* Estilo para el input de cantidad */
+        .count-input { background-color: transparent; border: none; color: #4ade80; text-align: center; font-size: 1.875rem; line-height: 2.25rem; font-weight: 700; width: 4rem; }
+        .count-input:focus { outline: none; background-color: rgba(71, 85, 105, 0.5); border-radius: 0.375rem; }
+        .count-input::-webkit-outer-spin-button, .count-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .count-input[type=number] { -moz-appearance: textfield; }
+
+        /* --- Estilos para Modales y Menú Hamburguesa --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease; z-index: 50;
+        }
+        .modal-overlay.is-open { opacity: 1; visibility: visible; }
+        .modal-content {
+            background-color: #1e293b;
+            padding: 2rem; border-radius: 1rem;
+            width: 90%; max-width: 600px;
+            transform: scale(0.95); transition: all 0.3s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-overlay.is-open .modal-content { transform: scale(1); }
+
+        .mobile-menu {
+            position: fixed; top: 0; left: 0; bottom: 0;
+            width: 280px; background-color: #1e293b;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 40;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .mobile-menu.is-open { transform: translateX(0); }
+
+        /* --- Estilo del botón de hamburguesa (CON TRANSICIÓN MORPHING) --- */
+        .hamburger-icon {
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+        }
+        .hamburger-icon .line {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            transition: d 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* La forma base del ícono ahora está en el HTML. */
+        /* El CSS se encarga de la animación para navegadores compatibles. */
+        #hamburger-btn .line-top { d: path("M 4 8 H 28"); }
+        #hamburger-btn .line-middle { d: path("M 4 16 H 28"); }
+        #hamburger-btn .line-bottom { d: path("M 4 24 H 28"); }
+
+        #hamburger-btn.is-open .line-top { d: path("M 12 8 L 4 16"); }
+        #hamburger-btn.is-open .line-middle { d: path("M 4 16 H 28"); }
+        #hamburger-btn.is-open .line-bottom { d: path("M 12 24 L 4 16"); }
+
+        /* --- Nuevos estilos para el menú rediseñado --- */
+        .menu-header {
+            display: flex;
+            align-items: center;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #334155;
+        }
+        .menu-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-left: 3rem;
+        }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            color: #cbd5e1;
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-link .nav-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            margin-right: 1rem;
+            color: #94a3b8;
+            transition: color 0.2s ease-in-out;
+        }
+        .nav-link:hover {
+            background-color: #334155;
+        }
+        .nav-link.is-active {
+            background-color: #f8fafc;
+            color: #1e293b;
+            font-weight: 600;
+        }
+        .nav-link.is-active .nav-icon {
+            color: #1e293b;
+        }
+        
+        /* --- Estilos para la sección de autenticación --- */
+        .auth-section {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid #334155;
+        }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .user-profile img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #475569;
+        }
+        .user-profile .user-name {
+            font-weight: 600;
+            color: #f1f5f9;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+
+        /* --- Nuevos estilos para mejoras --- */
+        .quick-add-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .quick-add-btn {
+            background-color: #475569;
+            color: #e2e8f0;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .quick-add-btn:hover {
+            background-color: #64748b;
+            transform: translateY(-1px);
+        }
+        
+        /* NUEVO: Estilo para botones de monto de donación */
+        .donation-amount-btn.is-active {
+            background-color: #16a34a; /* Verde esmeralda */
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        /* --- Animación suave del Toast --- */
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background-color: #059669; /* Verde por defecto */
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            transform: translateX(110%);
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+            z-index: 60;
+        }
+        .toast.error {
+            background-color: #dc2626; /* Rojo para errores */
+        }
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* --- Estilos de Impresión --- */
+        .print-only { display: none; }
+        @media print {
+            body { background: white !important; color: black !important; }
+            .no-print { display: none !important; }
+            body > *:not(#print-area) { display: none !important; }
+            #print-area { display: block !important; }
+        }
+
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200">
+
+    <!-- BOTÓN DE MENÚ HAMBURGUESA FIJO -->
+    <button id="hamburger-btn" class="fixed top-6 left-6 p-2 z-50 no-print hamburger-btn">
+        <svg class="hamburger-icon text-slate-300" viewBox="0 0 32 32">
+            <!-- CAMBIO: Se añade el atributo 'd' para compatibilidad -->
+            <path class="line line-top" d="M 4 8 H 28"></path>
+            <path class="line line-middle" d="M 4 16 H 28"></path>
+            <path class="line line-bottom" d="M 4 24 H 28"></path>
+        </svg>
+    </button>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast no-print">
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- Menú Hamburguesa (Contenido) -->
+    <div id="mobile-menu-overlay" class="modal-overlay no-print" style="z-index: 35;"></div>
+    <nav id="mobile-menu" class="mobile-menu no-print">
+        <div>
+            <div class="menu-header">
+                <h3>Menú</h3>
+            </div>
+            <ul class="space-y-2">
+                <li>
+                    <a href="#" data-page="contador" class="nav-link">
+                        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                        <span>Contador</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-page="informes" class="nav-link">
+                        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>Mis Informes</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-page="estadisticas" class="nav-link">
+                        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        <span>Estadísticas</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Sección de Donaciones -->
+        <div class="mt-auto pt-4 border-t border-slate-700">
+             <a href="#" data-page="donaciones" class="nav-link">
+                <svg class="nav-icon text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+                <span>Apoyar el proyecto</span>
+            </a>
+        </div>
+
+        <!-- Sección de Autenticación -->
+        <div class="auth-section" style="margin-top: 0.5rem;">
+            <div id="user-logged-out-view" class="space-y-3">
+                 <button id="email-login-btn" class="w-full flex items-center justify-center gap-3 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    <span>Iniciar Sesión / Registrarse</span>
+                </button>
+            </div>
+            <div id="user-logged-in-view" class="hidden">
+                <div class="user-profile">
+                    <img id="user-photo" src="" alt="Foto de perfil" onerror="this.src='https://placehold.co/40x40/475569/f1f5f9?text=C'; this.onerror=null;">
+                    <div class="flex-grow min-w-0">
+                        <p id="user-name" class="user-name"></p>
+                        <button id="logout-btn" class="text-sm text-slate-400 hover:text-red-400 transition">Cerrar sesión</button>
+                    </div>
+                    <button id="settings-btn" class="p-2 rounded-full hover:bg-slate-700 transition">
+                        <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="main-content">
+        <!-- Contenido Principal -->
+        <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+            <header class="flex items-center justify-center mb-6 text-center mt-8 no-print">
+                <div>
+                     <h1 class="text-4xl md:text-5xl font-bold text-white">Cun.cl</h1>
+                     <p class="text-lg text-slate-400 mt-2">Un contador de dinero en efectivo. Así de simple.</p>
+                </div>
+            </header>
+
+            <!-- PÁGINA: CONTADOR -->
+            <div id="page-contador">
+                <div id="view-toggle" class="view-toggle-container flex justify-center mb-10 bg-slate-800/50 p-1 rounded-lg max-w-xs mx-auto no-print">
+                    <div class="view-toggle-slider"></div>
+                    <button id="view-grid-btn" class="view-toggle-btn is-active flex-1 flex items-center justify-center p-2 rounded-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                        Cuadrícula
+                    </button>
+                    <button id="view-list-btn" class="view-toggle-btn flex-1 flex items-center justify-center p-2 rounded-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+                        Lista
+                    </button>
+                </div>
+
+                <main class="space-y-8">
+                    <div class="section is-open">
+                        <div class="section-header flex justify-between items-center no-print">
+                            <h2 class="text-3xl font-bold text-white border-l-4 border-emerald-400 pl-4">Monedas</h2>
+                            <svg class="chevron w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                        <div class="section-content-wrapper">
+                            <div id="coins-container" class="section-content pt-8"></div>
+                        </div>
+                    </div>
+                    <div class="section is-open">
+                        <div class="section-header flex justify-between items-center no-print">
+                            <h2 class="text-3xl font-bold text-white border-l-4 border-emerald-400 pl-4">Billetes</h2>
+                             <svg class="chevron w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                         <div class="section-content-wrapper">
+                            <div id="bills-container" class="section-content pt-8"></div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- PÁGINA: MIS INFORMES -->
+            <div id="page-informes" class="hidden">
+                <div class="flex justify-between items-center mb-6 no-print">
+                    <h2 class="text-3xl font-bold text-white">Mis Informes Guardados</h2>
+                    <button id="export-all-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                        <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Exportar Todo
+                    </button>
+                </div>
+                <div id="reports-list" class="space-y-4">
+                    <!-- Los informes se insertarán aquí -->
+                </div>
+            </div>
+
+            <!-- PÁGINA: ESTADÍSTICAS -->
+            <div id="page-estadisticas" class="hidden">
+                <h2 class="text-3xl font-bold text-white mb-6">Estadísticas</h2>
+                <div id="stats-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Las estadísticas se insertarán aquí -->
+                </div>
+            </div>
+
+            <!-- PÁGINA: DONACIONES -->
+            <div id="page-donaciones" class="hidden">
+                <div class="max-w-2xl mx-auto text-center">
+                    <h2 class="text-3xl font-bold text-white mb-8">Apoyar el Proyecto</h2>
+                    <div class="bg-slate-800/50 p-8 rounded-2xl shadow-lg space-y-6">
+                        <div>
+                            <svg class="w-16 h-16 mx-auto text-red-400 mb-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+                            <h3 class="text-2xl font-semibold text-white mb-2">¡Gracias por usar Cun.cl!</h3>
+                            <p class="text-slate-300">Si esta herramienta te ha sido útil, considera apoyar el proyecto. Tu donación ayuda a cubrir los costos del servidor y el dominio, permitiendo que Cun.cl siga siendo gratuito y mejorando continuamente.</p>
+                        </div>
+                        
+                        <div class="space-y-4 text-left">
+                            <div>
+                                <label for="donation-nickname" class="block text-sm font-medium text-slate-300 mb-1">Apodo (Opcional)</label>
+                                <input type="text" id="donation-nickname" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Tu apodo público">
+                            </div>
+                            <div>
+                                <label for="donation-message" class="block text-sm font-medium text-slate-300 mb-1">Mensaje (Opcional)</label>
+                                <textarea id="donation-message" rows="3" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="¡Gracias por la app!"></textarea>
+                            </div>
+                            <!-- CAMBIO: Sección para elegir el monto de donación -->
+                            <div>
+                                <label for="donation-amount" class="block text-sm font-medium text-slate-300 mb-2">Elige un monto (USD)</label>
+                                <div id="donation-amount-buttons" class="flex gap-2 mb-3">
+                                    <button data-amount="5" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition is-active">$5</button>
+                                    <button data-amount="10" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition">$10</button>
+                                    <button data-amount="20" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition">$20</button>
+                                </div>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-lg">$</span>
+                                    <input type="number" id="donation-amount" class="w-full bg-slate-700 border border-slate-600 rounded-md p-3 pl-8 text-white text-lg font-bold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Otro monto" value="5.00" min="1.00" step="1.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PAYPAL BUTTON CONTAINER: Se mantiene igual, pero la lógica que lo usa cambiará -->
+                        <div id="paypal-button-container" class="mt-4"></div>
+                        <p class="text-xs text-slate-500 mt-2 text-center">Las donaciones se procesan de forma segura con PayPal.</p>
+
+                    </div>
+
+                    <div id="last-donation-container" class="mt-8">
+                        <h4 class="text-xl font-bold text-white mb-4">Última Donación</h4>
+                        <div id="last-donation-card" class="bg-slate-800/50 p-6 rounded-2xl shadow-lg text-left hidden">
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-emerald-500 rounded-full text-white text-2xl font-bold">
+                                    <span id="donation-initial">A</span>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-white" id="donation-name">Anónimo</p>
+                                    <p class="text-slate-300 italic">"¡Gracias por esta increíble herramienta!"</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div id="no-donation-card" class="bg-slate-800/50 p-6 rounded-2xl shadow-lg text-center">
+                            <p class="text-slate-400">Aún no hay donaciones. ¡Sé el primero en apoyar!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Total y Botones de Acción -->
+    <footer class="bg-slate-900/70 text-white py-4 total-display no-print">
+        <div class="container mx-auto flex justify-start items-center max-w-7xl px-4">
+            <div class="flex flex-col items-start">
+                <div class="text-left mb-2">
+                    <span class="text-lg font-medium text-slate-300">TOTAL</span>
+                    <p id="grand-total" class="font-bold text-emerald-400 tracking-wider transition-all duration-300">$0</p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="reset-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-red-500/50 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                        </svg>
+                        <span class="hidden sm:inline">Reiniciar</span>
+                    </button>
+                    <button id="save-report-btn" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-sky-500/50 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                        <span class="hidden sm:inline">Guardar</span>
+                    </button>
+                    <button id="print-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-gray-500/50 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        <span class="hidden sm:inline">Imprimir</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Pie de página con información legal -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-6 mt-auto no-print">
+        <div class="container mx-auto text-center text-slate-400 text-sm px-4">
+            <div class="flex flex-wrap justify-center items-center gap-x-4 sm:gap-x-6 gap-y-2 mb-4">
+                <a href="#" id="terms-link" class="hover:text-white transition whitespace-nowrap">Términos y Condiciones</a>
+                <a href="#" id="privacy-link" class="hover:text-white transition whitespace-nowrap">Políticas de Privacidad</a>
+                <a href="#" id="contact-link" class="hover:text-white transition whitespace-nowrap">Contacto</a>
+            </div>
+            <p>&copy; 2024 Cun.cl - Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- MODALES -->
+    <div id="save-modal" class="modal-overlay no-print">
+        <div class="modal-content space-y-4">
+            <h3 class="text-2xl font-bold text-white">Guardar Informe</h3>
+            <div>
+                <label for="report-title" class="block text-sm font-medium text-slate-300 mb-1">Título del Informe</label>
+                <input type="text" id="report-title" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Ejemplo: Alcancía">
+            </div>
+            <div>
+                <label for="report-date" class="block text-sm font-medium text-slate-300 mb-1">Fecha</label>
+                <input type="text" id="report-date" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+            </div>
+            <div class="flex justify-end gap-4 pt-4">
+                <button data-close-modal class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md transition">Cancelar</button>
+                <button id="confirm-save-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-md transition">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-report-modal" class="modal-overlay no-print">
+        <div id="view-report-content" class="modal-content space-y-4">
+            <!-- Contenido del informe se insertará aquí -->
+        </div>
+    </div>
+    
+    <div id="email-auth-modal" class="modal-overlay no-print">
+        <div class="modal-content space-y-4">
+            <h3 id="email-auth-title" class="text-2xl font-bold text-white">Iniciar Sesión</h3>
+            <div id="name-field-container" class="hidden">
+                <label for="name-input" class="block text-sm font-medium text-slate-300 mb-1">Nombre</label>
+                <input type="text" id="name-input" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Tu nombre o apodo">
+            </div>
+            <div>
+                <label for="email-input" class="block text-sm font-medium text-slate-300 mb-1">Correo Electrónico</label>
+                <input type="email" id="email-input" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="tu@correo.com">
+            </div>
+            <div id="password-field-container">
+                <label for="password-input" class="block text-sm font-medium text-slate-300 mb-1">Contraseña</label>
+                <input type="password" id="password-input" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="••••••••">
+            </div>
+             <div class="text-right text-sm">
+                <button id="forgot-password-btn" class="font-semibold text-emerald-400 hover:text-emerald-300 transition">¿Olvidaste tu contraseña?</button>
+            </div>
+            <div class="flex justify-end gap-4 pt-4">
+                <button data-close-modal class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md transition">Cancelar</button>
+                <button id="email-auth-action-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-md transition w-32">Iniciar Sesión</button>
+            </div>
+            <p class="text-center text-sm text-slate-400 pt-2">
+                <span id="toggle-auth-text">¿No tienes una cuenta?</span>
+                <button id="toggle-auth-mode-btn" class="font-semibold text-emerald-400 hover:text-emerald-300 transition">Regístrate</button>
+            </p>
+        </div>
+    </div>
+    
+    <div id="settings-modal" class="modal-overlay no-print">
+        <div class="modal-content space-y-6">
+            <h3 class="text-2xl font-bold text-white">Ajustes de la Cuenta</h3>
+            
+            <!-- Cambiar Nombre -->
+            <div class="space-y-2">
+                <h4 class="font-semibold text-slate-200 border-b border-slate-700 pb-1">Cambiar Nombre</h4>
+                <label for="update-name-input" class="block text-sm font-medium text-slate-300">Nuevo nombre</label>
+                <div class="flex gap-2">
+                    <input type="text" id="update-name-input" class="flex-grow w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <button id="update-name-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-md transition disabled:bg-slate-500 disabled:cursor-not-allowed">Guardar</button>
+                </div>
+            </div>
+
+            <!-- Cambiar Contraseña -->
+            <div class="space-y-2">
+                <h4 class="font-semibold text-slate-200 border-b border-slate-700 pb-1">Cambiar Contraseña</h4>
+                <div>
+                    <label for="current-password-input" class="block text-sm font-medium text-slate-300">Contraseña actual</label>
+                    <input type="password" id="current-password-input" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 mt-1 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="••••••••">
+                </div>
+                <div>
+                    <label for="new-password-input" class="block text-sm font-medium text-slate-300">Nueva contraseña</label>
+                    <input type="password" id="new-password-input" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 mt-1 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="••••••••">
+                </div>
+                <div>
+                    <label for="confirm-password-input" class="block text-sm font-medium text-slate-300">Confirmar nueva contraseña</label>
+                    <input type="password" id="confirm-password-input" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 mt-1 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="••••••••">
+                </div>
+                 <div class="flex justify-end">
+                    <button id="update-password-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-md transition mt-2 disabled:bg-slate-500 disabled:cursor-not-allowed">Actualizar Contraseña</button>
+                </div>
+            </div>
+
+             <div class="flex justify-end gap-4 pt-4 mt-4 border-t border-slate-700">
+                <button data-close-modal class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE CIERRE DE SESIÓN -->
+    <div id="logout-confirm-modal" class="modal-overlay no-print">
+        <div class="modal-content space-y-4 max-w-sm text-center">
+            <h3 class="text-2xl font-bold text-white">Cerrar Sesión</h3>
+            <p class="text-slate-300">¿Estás seguro de que quieres cerrar tu sesión?</p>
+            <div class="flex justify-center gap-4 pt-4">
+                <button data-close-modal class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-6 rounded-md transition">Cancelar</button>
+                <button id="confirm-logout-btn" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-md transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="terms-modal" class="modal-overlay no-print">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold text-white mb-2">Términos y Condiciones de Uso</h3>
+            <p class="text-xs text-slate-400 mb-4">Última actualización: 16 de julio de 2024</p>
+            <div class="text-slate-300 space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-2">
+                <p><strong>1. Aceptación de los Términos:</strong> El uso de este servicio constituye su aceptación de estos términos. Si no está de acuerdo, por favor, no utilice la aplicación.</p>
+                <p><strong>2. Cuentas de Usuario:</strong><br>
+                    - Para guardar datos en la nube, debe crear una cuenta.<br>
+                    - Usted es el único responsable de mantener la confidencialidad de su contraseña y de todas las actividades que ocurran en su cuenta.<br>
+                    - Debe proporcionar información precisa y veraz al crear su cuenta.</p>
+                <p><strong>3. Uso del Servicio:</strong><br>
+                    - Cun.cl es una herramienta diseñada para facilitar el conteo de dinero en efectivo.<br>
+                    - Este servicio no constituye asesoramiento financiero, legal o contable y no debe ser utilizado como tal.</p>
+                <p><strong>4. Limitación de Responsabilidad:</strong><br>
+                    - El servicio se proporciona "tal cual" y "según disponibilidad". No garantizamos que sea ininterrumpido, seguro o libre de errores.<br>
+                    - Aunque utilizamos la robusta infraestructura de Firebase, no somos responsables de la pérdida de datos o de cualquier daño directo o indirecto que resulte del uso (o la imposibilidad de uso) de la aplicación.</p>
+                <p><strong>5. Terminación:</strong><br>
+                    - Nos reservamos el derecho de suspender o cancelar su cuenta, sin previo aviso, si determinamos que ha violado estos términos.</p>
+            </div>
+            <div class="flex justify-end gap-4 pt-4 mt-4 border-t border-slate-700">
+                <button data-close-modal class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="privacy-modal" class="modal-overlay no-print">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold text-white mb-2">Políticas de Privacidad</h3>
+            <p class="text-xs text-slate-400 mb-4">Última actualización: 16 de julio de 2024</p>
+            <div class="text-slate-300 space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-2">
+                <h4 class="font-bold text-slate-200">1. Información que Recopilamos</h4>
+                <p>Al utilizar nuestros servicios, recopilamos dos tipos de información:<br>
+                    - <strong>Información de la Cuenta:</strong> Cuando se registra a través de correo electrónico y contraseña, recopilamos la dirección de correo electrónico que proporciona y su nombre. Esta información es esencial para crear y proteger su cuenta.<br>
+                    - <strong>Datos de Uso (Informes):</strong> Recopilamos los informes de conteo que usted crea y guarda explícitamente. Esto incluye el título, la fecha, el monto total y el desglose detallado de monedas y billetes de cada informe.</p>
+                <h4 class="font-bold text-slate-200 mt-3">2. Cómo Usamos su Información</h4>
+                <p>Utilizamos su información con el único propósito de ofrecerle una mejor experiencia:<br>
+                    - <strong>Para Proveer el Servicio Principal:</strong> Su información de cuenta y sus informes se utilizan para permitirle guardar sus datos en la nube y acceder a ellos de forma segura desde cualquier dispositivo donde inicie sesión.<br>
+                    - <strong>Para Personalizar la Experiencia:</strong> Usamos su nombre para identificar su perfil dentro de la aplicación y darle la bienvenida.</p>
+                <h4 class="font-bold text-slate-200 mt-3">3. Almacenamiento y Seguridad de los Datos</h4>
+                <p>- Sus datos (cuenta e informes) se almacenan de forma segura en la plataforma <strong>Firebase de Google</strong>, un servicio líder en la industria.<br>
+                    - Implementamos reglas de seguridad estrictas que garantizan que <strong>solo usted</strong>, como usuario autenticado, pueda acceder, modificar y eliminar sus propios informes. Ningún otro usuario puede ver sus datos.</p>
+                <h4 class="font-bold text-slate-200 mt-3">4. Compartir Información</h4>
+                <p>Es simple: <strong>No vendemos, alquilamos ni compartimos su información personal o sus informes con terceros.</strong> Sus datos son suyos.</p>
+                <h4 class="font-bold text-slate-200 mt-3">5. Su Control Sobre los Datos</h4>
+                <p>- Usted tiene control total sobre sus informes y puede <strong>eliminarlos en cualquier momento</strong> desde la sección "Mis Informes". La eliminación de un informe es permanente e irreversible.<br>
+                    - Si en algún momento desea <strong>eliminar su cuenta y todos los datos asociados</strong>, por favor, contáctenos al correo de soporte proporcionado en la aplicación.</p>
+            </div>
+            <div class="flex justify-end gap-4 pt-4 mt-4 border-t border-slate-700">
+                <button data-close-modal class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="contact-modal" class="modal-overlay no-print">
+        <div class="modal-content space-y-4 text-center">
+            <h3 class="text-2xl font-bold text-white">Contacto</h3>
+            <div class="text-slate-300 space-y-2">
+                <p>Si tienes alguna consulta, sugerencia, necesitas soporte técnico, o simplemente quieres saludar, puedes contactarte a través del siguiente correo electrónico:</p>
+                <a href="mailto:45walzer@gmail.com" class="text-emerald-400 font-bold text-lg hover:text-emerald-300 transition">45walzer@gmail.com</a>
+            </div>
+            <div class="flex justify-end gap-4 pt-4">
+                <button data-close-modal class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Área de Impresión (oculta por defecto) -->
+    <div id="print-area" class="print-only p-8 bg-white text-black">
+        <!-- El contenido para imprimir se insertará aquí -->
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+      import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+      import { getFirestore, doc, setDoc, getDocs, collection, addDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyBjfNRn37OtuCIowB1hwsgoOxFdQrQbXvE",
+        authDomain: "cun-cl-app.firebaseapp.com",
+        projectId: "cun-cl-app",
+        storageBucket: "cun-cl-app.firebasestorage.app",
+        messagingSenderId: "898029066301",
+        appId: "1:898029066301:web:a2ca928994df595addb254",
+        measurementId: "G-ZPCHWM7NCH"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      // --- MANEJO DE AUTENTICACIÓN ---
+      const emailLoginBtn = document.getElementById('email-login-btn');
+      const logoutBtn = document.getElementById('logout-btn');
+      const userLoggedInView = document.getElementById('user-logged-in-view');
+      const userLoggedOutView = document.getElementById('user-logged-out-view');
+      const userNameEl = document.getElementById('user-name');
+      const userPhotoEl = document.getElementById('user-photo');
+      const settingsBtn = document.getElementById('settings-btn');
+      const logoutConfirmModal = document.getElementById('logout-confirm-modal');
+      const confirmLogoutBtn = document.getElementById('confirm-logout-btn');
+      
+      // --- ELEMENTOS DEL MODAL DE CORREO ---
+      const emailAuthModal = document.getElementById('email-auth-modal');
+      const emailAuthTitle = document.getElementById('email-auth-title');
+      const nameFieldContainer = document.getElementById('name-field-container');
+      const passwordFieldContainer = document.getElementById('password-field-container');
+      const nameInput = document.getElementById('name-input');
+      const emailInput = document.getElementById('email-input');
+      const passwordInput = document.getElementById('password-input');
+      const emailAuthActionBtn = document.getElementById('email-auth-action-btn');
+      const toggleAuthModeBtn = document.getElementById('toggle-auth-mode-btn');
+      const toggleAuthText = document.getElementById('toggle-auth-text');
+      const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+      let isLoginMode = true;
+      let isPasswordResetMode = false;
+
+      // --- ELEMENTOS DEL MODAL DE AJUSTES ---
+      const settingsModal = document.getElementById('settings-modal');
+      const updateNameInput = document.getElementById('update-name-input');
+      const updateNameBtn = document.getElementById('update-name-btn');
+      const currentPasswordInput = document.getElementById('current-password-input');
+      const newPasswordInput = document.getElementById('new-password-input');
+      const confirmPasswordInput = document.getElementById('confirm-password-input');
+      const updatePasswordBtn = document.getElementById('update-password-btn');
+
+      let currentUser = null;
+
+      onAuthStateChanged(auth, (user) => {
+        if (user && user.emailVerified) {
+          // User is signed in AND verified
+          currentUser = user;
+          userLoggedInView.classList.remove('hidden');
+          userLoggedOutView.classList.add('hidden');
+          userNameEl.textContent = user.displayName || user.email;
+          userPhotoEl.src = user.photoURL || `https://placehold.co/40x40/475569/f1f5f9?text=${(user.displayName || user.email)[0].toUpperCase()}`;
+          
+          if (document.getElementById('page-informes').classList.contains('hidden') === false) {
+             window.renderReportsPage();
+          }
+        } else {
+          // User is signed out or not verified
+          currentUser = null;
+          userLoggedInView.classList.add('hidden');
+          userLoggedOutView.classList.remove('hidden');
+          window.renderReportsPage(); // Esto limpiará la lista o mostrará el mensaje de login
+        }
+      });
+      
+      emailLoginBtn.addEventListener('click', () => {
+        setupEmailModal(true, false); // Asegurarse de que el modal siempre abra en modo login
+        openModal(emailAuthModal);
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        openModal(logoutConfirmModal);
+      });
+      
+      confirmLogoutBtn.addEventListener('click', () => {
+        signOut(auth).then(() => {
+          window.showToast('Sesión cerrada');
+          closeModal(logoutConfirmModal);
+          window.toggleMenu(true); // Cierra el menú si está abierto
+        }).catch((error) => {
+          console.error("Error al cerrar sesión:", error);
+          window.showToast('Error al cerrar sesión', true);
+        });
+      });
+      
+      settingsBtn.addEventListener('click', () => {
+        if (!auth.currentUser) return;
+        updateNameInput.value = auth.currentUser.displayName || '';
+        currentPasswordInput.value = '';
+        newPasswordInput.value = '';
+        confirmPasswordInput.value = '';
+        openModal(settingsModal);
+      });
+
+      // --- LÓGICA DEL MODAL DE CORREO ---
+      const setupEmailModal = (isLogin, isPasswordReset) => {
+        isLoginMode = isLogin;
+        isPasswordResetMode = isPasswordReset;
+        
+        toggleAuthModeBtn.classList.toggle('hidden', isPasswordReset);
+        toggleAuthText.classList.toggle('hidden', isPasswordReset);
+        passwordFieldContainer.classList.toggle('hidden', isPasswordReset);
+        forgotPasswordBtn.classList.toggle('hidden', !isLogin || isPasswordReset);
+
+        if (isPasswordReset) {
+            emailAuthTitle.textContent = 'Restablecer Contraseña';
+            nameFieldContainer.classList.add('hidden');
+            emailAuthActionBtn.textContent = 'Enviar Correo';
+        } else if (isLogin) {
+            emailAuthTitle.textContent = 'Iniciar Sesión';
+            nameFieldContainer.classList.add('hidden');
+            emailAuthActionBtn.textContent = 'Iniciar Sesión';
+            toggleAuthText.textContent = '¿No tienes una cuenta?';
+            toggleAuthModeBtn.textContent = 'Regístrate';
+        } else {
+            emailAuthTitle.textContent = 'Crear Cuenta';
+            nameFieldContainer.classList.remove('hidden');
+            emailAuthActionBtn.textContent = 'Crear Cuenta';
+            toggleAuthText.textContent = '¿Ya tienes una cuenta?';
+            toggleAuthModeBtn.textContent = 'Inicia Sesión';
+        }
+      };
+      
+      toggleAuthModeBtn.addEventListener('click', () => {
+        setupEmailModal(!isLoginMode, false);
+      });
+
+      forgotPasswordBtn.addEventListener('click', () => {
+        setupEmailModal(true, true);
+      });
+      
+      emailAuthActionBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        
+        if (isPasswordResetMode) {
+            if (!email) {
+                window.showToast('Ingresa tu correo para restablecer la contraseña.', true);
+                return;
+            }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                window.showToast('Si tu correo está registrado, recibirás un enlace de recuperación.');
+                closeModal(emailAuthModal);
+            } catch (error) {
+                console.error("Error al enviar correo de restablecimiento:", error);
+                window.showToast('No se pudo enviar el correo. Verifica que esté bien escrito.', true);
+            }
+            return;
+        }
+
+        const name = nameInput.value.trim();
+        const password = passwordInput.value;
+        
+        if (!email || !password || (!isLoginMode && !name)) {
+            window.showToast('Por favor, completa todos los campos.', true);
+            return;
+        }
+        
+        emailAuthActionBtn.disabled = true;
+        emailAuthActionBtn.textContent = '...';
+
+        try {
+            if (isLoginMode) {
+                // Iniciar Sesión
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                if (!userCredential.user.emailVerified) {
+                    await signOut(auth);
+                    window.showToast('Tu correo no ha sido verificado. Revisa tu bandeja de entrada.', true);
+                } else {
+                    window.showToast('Inicio de sesión exitoso');
+                    closeModal(emailAuthModal);
+                    window.toggleMenu(true);
+                }
+            } else {
+                // Registrarse
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, { displayName: name });
+                await sendEmailVerification(userCredential.user);
+                
+                window.showToast('¡Cuenta creada! Revisa tu correo para verificarla.');
+                await signOut(auth); // Desloguear hasta que verifique
+                closeModal(emailAuthModal);
+            }
+        } catch (error) {
+            console.error("Error de autenticación con correo:", error.code, error.message);
+            let message = 'Ocurrió un error. Inténtalo de nuevo.';
+            switch (error.code) {
+                case 'auth/invalid-email': message = 'El formato del correo no es válido.'; break;
+                case 'auth/user-not-found':
+                case 'auth/wrong-password': 
+                case 'auth/invalid-credential': message = 'Correo o contraseña incorrectos.'; break;
+                case 'auth/email-already-in-use': message = 'Este correo ya está registrado.'; break;
+                case 'auth/weak-password': message = 'La contraseña debe tener al menos 6 caracteres.'; break;
+            }
+            window.showToast(message, true);
+        } finally {
+            emailAuthActionBtn.disabled = false;
+            setupEmailModal(isLoginMode, false); // Restaura el estado
+        }
+      });
+      
+      // --- LÓGICA DEL MODAL DE AJUSTES Y COOLDOWNS ---
+      const checkCooldown = (action, minutes) => {
+        const lastActionTime = localStorage.getItem(`last_${action}_time`);
+        if (!lastActionTime) return { canPerform: true };
+
+        const minutesPassed = (Date.now() - parseInt(lastActionTime)) / 1000 / 60;
+        if (minutesPassed < minutes) {
+            return { canPerform: false, timeLeft: Math.ceil(minutes - minutesPassed) };
+        }
+        return { canPerform: true };
+      };
+
+      updateNameBtn.addEventListener('click', async () => {
+        const cooldown = checkCooldown('name_change', 15);
+        if (!cooldown.canPerform) {
+            window.showToast(`Debes esperar ${cooldown.timeLeft} min para cambiar tu nombre de nuevo.`, true);
+            return;
+        }
+
+        const newName = updateNameInput.value.trim();
+        if (newName && newName !== auth.currentUser.displayName) {
+            try {
+                await updateProfile(auth.currentUser, { displayName: newName });
+                localStorage.setItem('last_name_change_time', Date.now().toString());
+                window.showToast('Nombre actualizado exitosamente.');
+                userNameEl.textContent = newName;
+            } catch (error) {
+                console.error("Error al actualizar nombre:", error);
+                window.showToast('No se pudo actualizar el nombre.', true);
+            }
+        }
+      });
+
+      updatePasswordBtn.addEventListener('click', async () => {
+        const cooldown = checkCooldown('password_change', 15);
+        if (!cooldown.canPerform) {
+            window.showToast(`Debes esperar ${cooldown.timeLeft} min para cambiar la contraseña de nuevo.`, true);
+            return;
+        }
+
+        const user = auth.currentUser;
+        const currentPassword = currentPasswordInput.value;
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            window.showToast('Por favor, completa todos los campos de contraseña.', true);
+            return;
+        }
+        if (newPassword.length < 6) {
+            window.showToast('La nueva contraseña debe tener al menos 6 caracteres.', true);
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            window.showToast('Las contraseñas nuevas no coinciden.', true);
+            return;
+        }
+
+        updatePasswordBtn.disabled = true;
+        
+        try {
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+            await updatePassword(user, newPassword);
+            
+            localStorage.setItem('last_password_change_time', Date.now().toString());
+            window.showToast('Contraseña actualizada exitosamente.');
+            closeModal(settingsModal);
+        } catch (error) {
+            console.error("Error al actualizar contraseña:", error);
+            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                window.showToast('La contraseña actual es incorrecta.', true);
+            } else {
+                window.showToast('Error al actualizar la contraseña. Inténtalo de nuevo.', true);
+            }
+        } finally {
+            updatePasswordBtn.disabled = false;
+        }
+      });
+
+      // --- LÓGICA DE DONACIONES ---
+      const donationsRef = collection(db, "donations");
+      const q = query(donationsRef, orderBy("createdAt", "desc"), limit(1));
+      const lastDonationCard = document.getElementById('last-donation-card');
+      const noDonationCard = document.getElementById('no-donation-card');
+      const donationInitial = document.getElementById('donation-initial');
+      const donationName = document.getElementById('donation-name');
+      const donationMessage = lastDonationCard.querySelector('p.text-slate-300');
+
+      onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            lastDonationCard.classList.add('hidden');
+            noDonationCard.classList.remove('hidden');
+        } else {
+            const lastDonation = snapshot.docs[0].data();
+            const nickname = lastDonation.nickname || 'Anónimo';
+            donationInitial.textContent = nickname.charAt(0).toUpperCase();
+            donationName.textContent = nickname;
+            donationMessage.textContent = `"${lastDonation.message || '¡Gracias por el apoyo!'}"`;
+            
+            noDonationCard.classList.add('hidden');
+            lastDonationCard.classList.remove('hidden');
+        }
+      });
+
+
+      // Pasar la instancia de DB a la lógica principal de la app
+      window.firebaseInstances = { db, auth };
+      // Pasar funciones para que sean accesibles globalmente
+      window.openModal = (modal) => modal.classList.add('is-open');
+      window.closeModal = (modal) => modal.classList.remove('is-open');
+
+    </script>
+
+    <!-- App Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURACIÓN INICIAL ---
+            const denominations = {
+                coins: [{ value: 10 }, { value: 50 }, { value: 100 }, { value: 500 }],
+                bills: [{ value: 1000 }, { value: 2000 }, { value: 5000 }, { value: 10000 }, { value: 20000 }]
+            };
+
+            const colors = {
+                10:    { stroke: '#ca8a04', fill: '#facc15' },
+                50:    { stroke: '#ca8a04', fill: '#facc15' },
+                100:   { stroke: '#ca8a04', fill: '#facc15', innerStroke: '#94a3b8', innerFill: '#e5e7eb' },
+                500:   { stroke: '#94a3b8', fill: '#e5e7eb', innerStroke: '#ca8a04', innerFill: '#facc15' },
+                1000:  { stroke: '#16a34a', fill: '#4ade80' },
+                2000:  { stroke: '#7e22ce', fill: '#a855f7' },
+                5000:  { stroke: '#dc2626', fill: '#f87171' },
+                10000: { stroke: '#2563eb', fill: '#60a5fa' },
+                20000: { stroke: '#ea580c', fill: '#fb923c' }
+            };
+
+            // --- ESTADO DE LA APLICACIÓN ---
+            let counts = {};
+            let activeCard = null;
+            let toastTimeout = null;
+
+            // --- SELECTORES DE DOM ---
+            const coinsContainer = document.getElementById('coins-container');
+            const billsContainer = document.getElementById('bills-container');
+            const grandTotalEl = document.getElementById('grand-total');
+            const resetButton = document.getElementById('reset-button');
+            const viewToggle = document.getElementById('view-toggle');
+            const gridBtn = document.getElementById('view-grid-btn');
+            const listBtn = document.getElementById('view-list-btn');
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const pages = {
+                contador: document.getElementById('page-contador'),
+                informes: document.getElementById('page-informes'),
+                estadisticas: document.getElementById('page-estadisticas'),
+                donaciones: document.getElementById('page-donaciones')
+            };
+            const saveReportBtn = document.getElementById('save-report-btn');
+            const saveModal = document.getElementById('save-modal');
+            const confirmSaveBtn = document.getElementById('confirm-save-btn');
+            const reportTitleInput = document.getElementById('report-title');
+            const reportDateInput = document.getElementById('report-date');
+            const reportsListContainer = document.getElementById('reports-list');
+            const viewReportModal = document.getElementById('view-report-modal');
+            const viewReportContent = document.getElementById('view-report-content');
+            const printBtn = document.getElementById('print-btn');
+            const exportAllBtn = document.getElementById('export-all-btn');
+            const statsContainer = document.getElementById('stats-container');
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            const printArea = document.getElementById('print-area');
+            const donationAmountInput = document.getElementById('donation-amount');
+            const donationAmountBtns = document.querySelectorAll('.donation-amount-btn');
+            
+            const termsLink = document.getElementById('terms-link');
+            const privacyLink = document.getElementById('privacy-link');
+            const contactLink = document.getElementById('contact-link');
+            const termsModal = document.getElementById('terms-modal');
+            const privacyModal = document.getElementById('privacy-modal');
+            const contactModal = document.getElementById('contact-modal');
+            
+            // --- FUNCIONES ---
+            window.showToast = (message, isError = false) => {
+                if (toastTimeout) clearTimeout(toastTimeout);
+                toastMessage.textContent = message;
+                toast.classList.toggle('error', isError);
+                toast.classList.add('show');
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 4000);
+            };
+
+            const formatCurrency = (value) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value);
+
+            const getPolygonPoints = (sides, radius, centerX, centerY) => {
+                const points = [];
+                const angleStep = (2 * Math.PI) / sides;
+                const startAngle = -Math.PI / 2; 
+                for (let i = 0; i < sides; i++) {
+                    const angle = startAngle + i * angleStep;
+                    const x = centerX + radius * Math.cos(angle);
+                    const y = centerY + radius * Math.sin(angle);
+                    points.push(`${x},${y}`);
+                }
+                return points.join(' ');
+            };
+
+            const getIcon = (value) => {
+                const isBill = value >= 1000;
+                const text = new Intl.NumberFormat('es-CL').format(value);
+                const colorSet = colors[value];
+                const strokeWidth = 3.5;
+                const commonStyle = `stroke-linecap="round" stroke-linejoin="round" stroke-width="${strokeWidth}"`;
+                const clipId = `clip-path-${value}`;
+
+                let fillShapes = '', outlineShapes = '';
+                
+                if (isBill) {
+                    const rect = `x="10" y="25" width="80" height="50" rx="8"`;
+                    const perimeter = 260; const gap = 50;
+                    fillShapes = `<rect ${rect} fill="${colorSet.fill}" />`;
+                    outlineShapes = `<g><rect class="bill-outline is-animating" ${rect} stroke="${colorSet.stroke}" fill="none" ${commonStyle} stroke-dasharray="${perimeter - gap} ${gap}" /></g>`;
+                } else {
+                    if (value === 50) {
+                        const points = getPolygonPoints(10, 40, 50, 50);
+                        const perimeter = 247;
+                        const gap = 45;
+                        fillShapes = `<polygon points="${points}" fill="${colorSet.fill}" />`;
+                        outlineShapes = `<g class="coin-outline-group-outer is-animating"><polygon points="${points}" stroke="${colorSet.stroke}" fill="none" ${commonStyle} stroke-dasharray="${perimeter - gap} ${gap}" /></g>`;
+                    } else {
+                        const outerCircle = `cx="50" cy="50" r="40"`;
+                        const outerCircumference = 2 * Math.PI * 40;
+                        const outerGap = 45;
+                        fillShapes = `<circle ${outerCircle} fill="${colorSet.fill}" />`;
+                        outlineShapes = `<g class="coin-outline-group-outer is-animating"><circle ${outerCircle} stroke="${colorSet.stroke}" fill="none" ${commonStyle} stroke-dasharray="${outerCircumference - outerGap} ${outerGap}" transform="rotate(-90 50 50)" /></g>`;
+                        if (value === 100 || value === 500) {
+                            const innerCircle = `cx="50" cy="50" r="28"`;
+                            const innerCircumference = 2 * Math.PI * 28;
+                            const innerGap = 35;
+                            fillShapes += `<circle ${innerCircle} fill="${colorSet.innerFill}" />`;
+                            outlineShapes += `<g class="coin-outline-group-inner is-animating"><circle ${innerCircle} stroke="${colorSet.innerStroke}" fill="none" ${commonStyle} stroke-dasharray="${innerCircumference - innerGap} ${innerGap}" transform="rotate(-90 50 50)" /></g>`;
+                        }
+                    }
+                }
+
+                const textSize = isBill ? (value < 10000 ? '20' : '17') : '28';
+                const textOutline = `<text class="icon-text-outline" x="50" y="52" font-family="Poppins, sans-serif" font-size="${textSize}" font-weight="600" fill="${colorSet.stroke}" text-anchor="middle" dominant-baseline="middle">${text}</text>`;
+                const textFill = `<text class="icon-text-fill" x="50" y="52" font-family="Poppins, sans-serif" font-size="${textSize}" font-weight="600" fill="#fff" text-anchor="middle" dominant-baseline="middle">${text}</text>`;
+
+                return `<svg viewBox="0 0 100 100" class="w-full h-full"><defs><clipPath id="${clipId}"><rect class="icon-clip-rect" x="0" y="0" width="100" height="100" /></clipPath></defs><g clip-path="url(#${clipId})">${fillShapes}</g>${outlineShapes}${textOutline}<g clip-path="url(#${clipId})">${textFill}</g></svg>`;
+            };
+
+            const createCard = (item) => {
+                const card = document.createElement('div');
+                card.className = `currency-card rounded-2xl shadow-lg flex flex-col p-4 cursor-pointer`;
+                card.dataset.value = item.value;
+                const quickAddValues = item.value >= 1000 ? [5, 10, 20] : [10, 25, 50];
+                const quickAddButtons = quickAddValues.map(val => `<button class="quick-add-btn" data-quick-add="${val}">+${val}</button>`).join('');
+                card.innerHTML = `<div class="currency-card-inner flex"><div class="icon-container flex-shrink-0">${getIcon(item.value)}</div><div class="card-details flex flex-col"><p class="text-xl font-bold text-white pointer-events-none">${formatCurrency(item.value)}</p><div class="controls-container flex items-center justify-center space-x-3 my-2"><button data-action="minus" class="bg-slate-700 hover:bg-slate-600 text-white font-bold w-10 h-10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-2xl">-</button><input type="number" min="0" id="count-${item.value}" class="count-input" value="0"><button data-action="plus" class="bg-emerald-500 hover:bg-emerald-400 text-white font-bold w-10 h-10 rounded-full transition-colors flex items-center justify-center text-2xl">+</button></div><div class="quick-add-buttons no-print">${quickAddButtons}</div></div><div class="subtotal-container text-center mt-2 bg-slate-800/50 p-2 rounded-lg pointer-events-none"><span class="font-semibold text-lg text-slate-300" id="subtotal-${item.value}">$0</span></div></div>`;
+                return card;
+            };
+
+            const setActiveCard = (card) => {
+                if (activeCard && activeCard !== card) {
+                    activeCard.classList.remove('is-active');
+                }
+                
+                activeCard = card;
+
+                if (activeCard) {
+                    activeCard.classList.add('is-active');
+                }
+            };
+
+            const updateGrandTotal = (animate = true) => {
+                const total = Object.values(counts).reduce((sum, item) => sum + (item.count * item.value), 0);
+                const formattedTotal = formatCurrency(total);
+                grandTotalEl.textContent = formattedTotal;
+
+                // Remove all possible size classes to reset
+                grandTotalEl.classList.remove('text-4xl', 'md:text-5xl', 'text-3xl', 'md:text-4xl', 'text-2xl');
+
+                // Apply new size classes based on length
+                if (formattedTotal.length > 11) { // For very large numbers like $10.000.000
+                    grandTotalEl.classList.add('text-2xl', 'md:text-4xl');
+                } else if (formattedTotal.length > 8) { // For large numbers like $100.000
+                    grandTotalEl.classList.add('text-3xl', 'md:text-5xl');
+                } else { // For smaller numbers
+                    grandTotalEl.classList.add('text-4xl', 'md:text-5xl');
+                }
+
+                if (animate && total > 0) {
+                    grandTotalEl.classList.add('grand-total-flash');
+                    grandTotalEl.addEventListener('animationend', () => grandTotalEl.classList.remove('grand-total-flash'), { once: true });
+                }
+            };
+
+            const updateCardUI = (value) => {
+                const count = counts[value].count;
+                document.getElementById(`count-${value}`).value = count;
+                document.getElementById(`subtotal-${value}`).textContent = formatCurrency(count * value);
+                document.querySelector(`.currency-card[data-value='${value}'] button[data-action='minus']`).disabled = count === 0;
+            };
+
+            const renderCards = () => {
+                [...denominations.coins, ...denominations.bills].forEach(item => {
+                    counts[item.value] = { value: item.value, count: 0 };
+                    const container = item.value < 1000 ? coinsContainer : billsContainer;
+                    container.appendChild(createCard(item));
+                    updateCardUI(item.value);
+                });
+                updateGrandTotal(false); // Initialize font size correctly
+            };
+
+            const handleInteraction = (e) => {
+                const card = e.target.closest('.currency-card');
+                if (!card) return;
+                setActiveCard(card);
+                const value = parseInt(card.dataset.value);
+                const target = e.target;
+                if (target.matches('button[data-action]')) {
+                    const action = target.dataset.action;
+                    if (action === 'plus') counts[value].count++;
+                    else if (action === 'minus' && counts[value].count > 0) counts[value].count--;
+                } else if (target.matches('.quick-add-btn')) {
+                    counts[value].count += parseInt(target.dataset.quickAdd);
+                    showToast(`+${target.dataset.quickAdd} ${formatCurrency(value)}`);
+                } else if (target.matches('.count-input')) {
+                    const newCount = parseInt(target.value, 10);
+                    counts[value].count = isNaN(newCount) || newCount < 0 ? 0 : newCount;
+                }
+                updateCardUI(value);
+                updateGrandTotal();
+            };
+            
+            const handleInputBlur = (e) => {
+                 if (e.target.matches('.count-input') && e.target.value === '') {
+                    const card = e.target.closest('.currency-card');
+                    const value = parseInt(card.dataset.value);
+                    counts[value].count = 0;
+                    updateCardUI(value);
+                    updateGrandTotal();
+                }
+            };
+
+            const handleReset = () => {
+                setActiveCard(null); 
+                Object.keys(counts).forEach(value => { counts[value].count = 0; updateCardUI(value); });
+                document.querySelectorAll('.currency-card').forEach(c => c.classList.remove('is-active'));
+                updateGrandTotal(false);
+                showToast('Contador reiniciado');
+            };
+
+            const handleToggleSection = (e) => {
+                const header = e.target.closest('.section-header');
+                if (header) header.closest('.section').classList.toggle('is-open');
+            };
+
+            const setViewMode = (mode) => {
+                [coinsContainer, billsContainer].forEach(container => {
+                    container.className = 'section-content pt-8'; // Reset classes
+                    container.classList.add(`view-${mode}`);
+                });
+                viewToggle.classList.toggle('mode-list', mode === 'list');
+                gridBtn.classList.toggle('is-active', mode === 'grid');
+                listBtn.classList.toggle('is-active', mode !== 'grid');
+            };
+            
+            window.toggleMenu = (forceClose = false) => {
+                const isOpen = mobileMenu.classList.contains('is-open');
+                if (forceClose || isOpen) {
+                    mobileMenu.classList.remove('is-open');
+                    mobileMenuOverlay.classList.remove('is-open');
+                    hamburgerBtn.classList.remove('is-open');
+                } else {
+                    mobileMenu.classList.add('is-open');
+                    mobileMenuOverlay.classList.add('is-open');
+                    hamburgerBtn.classList.add('is-open');
+                }
+            };
+            
+            const showPage = (pageId) => {
+                Object.values(pages).forEach(page => page.classList.add('hidden'));
+                pages[pageId].classList.remove('hidden');
+                navLinks.forEach(link => link.classList.toggle('is-active', link.dataset.page === pageId));
+
+                if (pageId === 'informes') renderReportsPage();
+                else if (pageId === 'estadisticas') renderStatsPage();
+                
+                toggleMenu(true);
+            };
+
+            const getReportsFromFirestore = async () => {
+                const { auth, db } = window.firebaseInstances;
+                const user = auth.currentUser;
+                if (!user) return [];
+
+                const { collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");
+                
+                const reportsRef = collection(db, "users", user.uid, "reports");
+                const q = query(reportsRef, orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                
+                const reports = [];
+                querySnapshot.forEach((doc) => {
+                    reports.push({ id: doc.id, ...doc.data() });
+                });
+                return reports;
+            };
+
+            window.renderReportsPage = async () => {
+                const { auth } = window.firebaseInstances;
+                if (!auth.currentUser) {
+                    reportsListContainer.innerHTML = `<div class="text-center p-8 bg-slate-800/50 rounded-lg"><p class="text-slate-400">Inicia sesión para ver tus informes guardados en la nube.</p></div>`;
+                    return;
+                }
+
+                reportsListContainer.innerHTML = `<div class="text-center p-8 bg-slate-800/50 rounded-lg"><p class="text-slate-400">Cargando informes...</p></div>`;
+                const reports = await getReportsFromFirestore();
+                reportsListContainer.innerHTML = '';
+                
+                if (reports.length === 0) {
+                    reportsListContainer.innerHTML = `<div class="text-center p-8 bg-slate-800/50 rounded-lg"><p class="text-slate-400">No tienes informes guardados.</p><p class="text-slate-500 mt-2">Usa el botón "Guardar" en la pantalla del contador.</p></div>`;
+                    return;
+                }
+                reports.forEach(report => {
+                    const reportCard = document.createElement('div');
+                    reportCard.className = 'bg-slate-800 p-4 rounded-lg flex justify-between items-center no-print';
+                    reportCard.innerHTML = `<div><h4 class="font-bold text-lg text-white">${report.title}</h4><p class="text-sm text-slate-400">${report.date}</p><p class="font-semibold text-emerald-400 mt-1">${formatCurrency(report.total)}</p></div><div class="flex gap-2"><button data-report-id="${report.id}" class="view-report-btn bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button><button data-report-id="${report.id}" class="print-report-btn bg-gray-700 hover:bg-gray-600 p-2 rounded-md transition"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg></button><button data-report-id="${report.id}" class="delete-report-btn bg-red-800/50 hover:bg-red-700/50 p-2 rounded-md transition"><svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div>`;
+                    reportsListContainer.appendChild(reportCard);
+                });
+            };
+
+            const renderStatsPage = async () => {
+                statsContainer.innerHTML = '';
+                const reports = await getReportsFromFirestore();
+                if (reports.length === 0) {
+                    statsContainer.innerHTML = `<div class="col-span-full text-center p-8 bg-slate-800/50 rounded-lg"><p class="text-slate-400">No hay datos suficientes para mostrar estadísticas.</p><p class="text-slate-500 mt-2">Inicia sesión y guarda algunos informes.</p></div>`;
+                    return;
+                }
+                const totalReports = reports.length;
+                const totalAmount = reports.reduce((sum, report) => sum + report.total, 0);
+                const avgAmount = totalAmount / totalReports;
+                const maxReport = reports.reduce((max, report) => report.total > max.total ? report : max, reports[0]);
+                const minReport = reports.reduce((min, report) => report.total < min.total ? report : min, reports[0]);
+                const stats = [
+                    { title: 'Total de Informes', value: totalReports, icon: '📊' },
+                    { title: 'Suma Total', value: formatCurrency(totalAmount), icon: '💰' },
+                    { title: 'Promedio', value: formatCurrency(avgAmount), icon: '📈' },
+                    { title: 'Mayor Cantidad', value: formatCurrency(maxReport.total), icon: '🏆' },
+                    { title: 'Menor Cantidad', value: formatCurrency(minReport.total), icon: '📉' },
+                    { title: 'Último Informe', value: reports[0]?.date || 'N/A', icon: '📅' }
+                ];
+                stats.forEach(stat => {
+                    const statCard = document.createElement('div');
+                    statCard.className = 'stats-card p-6 rounded-lg';
+                    statCard.innerHTML = `<div class="flex items-center justify-between mb-4"><span class="text-3xl">${stat.icon}</span><div class="text-right"><p class="text-sm text-slate-400">${stat.title}</p><p class="text-2xl font-bold text-white">${stat.value}</p></div></div>`;
+                    statsContainer.appendChild(statCard);
+                });
+            };
+            
+            const handleSaveReport = async () => {
+                const { auth, db } = window.firebaseInstances;
+                const user = auth.currentUser;
+
+                if (!user) {
+                    showToast('Debes iniciar sesión para guardar informes', true);
+                    closeModal(saveModal);
+                    return;
+                }
+
+                const lastSaveTime = localStorage.getItem('last_report_save_time');
+                if (lastSaveTime) {
+                    const secondsPassed = (Date.now() - parseInt(lastSaveTime)) / 1000;
+                    if (secondsPassed < 30) {
+                        showToast(`Debes esperar ${Math.ceil(30 - secondsPassed)} segundos para guardar otro informe.`, true);
+                        return;
+                    }
+                }
+
+                const total = Object.values(counts).reduce((sum, item) => sum + (item.count * item.value), 0);
+                if (total === 0) {
+                    showToast('No puedes guardar un informe vacío', true);
+                    return;
+                }
+                
+                const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");
+                
+                const newReport = {
+                    title: reportTitleInput.value.trim() || 'Informe sin título',
+                    date: reportDateInput.value.trim(),
+                    total: total,
+                    breakdown: JSON.parse(JSON.stringify(counts)),
+                    createdAt: serverTimestamp()
+                };
+
+                try {
+                    await addDoc(collection(db, "users", user.uid, "reports"), newReport);
+                    localStorage.setItem('last_report_save_time', Date.now().toString());
+                    closeModal(saveModal);
+                    showToast('Informe guardado en la nube');
+                } catch (error) {
+                    console.error("Error al guardar el informe:", error);
+                    showToast('Error al guardar. Inténtalo de nuevo.', true);
+                }
+            };
+
+            const handleDeleteReport = async (id) => {
+                if (!confirm('¿Estás seguro de que quieres eliminar este informe? Este cambio es irreversible.')) return;
+                
+                const { auth, db } = window.firebaseInstances;
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");
+
+                try {
+                    await deleteDoc(doc(db, "users", user.uid, "reports", id));
+                    renderReportsPage();
+                    showToast('Informe eliminado');
+                } catch (error) {
+                    console.error("Error al eliminar informe:", error);
+                    showToast('No se pudo eliminar el informe.', true);
+                }
+            };
+
+            const getReportHtml = (report, theme = 'light') => {
+                const colors = theme === 'light' 
+                    ? { text: 'text-gray-600', border: 'border-gray-300', mainText: 'text-black', title: 'text-black' }
+                    : { text: 'text-slate-400', border: 'border-slate-700', mainText: 'text-white', title: 'text-white' };
+
+                const breakdownHtml = Object.values(report.breakdown).filter(item => item.count > 0).map(item => `<div class="flex justify-between items-center ${colors.mainText}"><span>${item.count} x ${formatCurrency(item.value)}</span><span class="font-semibold">${formatCurrency(item.count * item.value)}</span></div>`).join('');
+
+                return `
+                    <h3 class="text-2xl font-bold ${colors.title}">${report.title}</h3>
+                    <p class="text-sm ${colors.text} -mt-2 mb-4">${report.date}</p>
+                    <div class="space-y-2 py-4 border-y ${colors.border}">${breakdownHtml}</div>
+                    <div class="flex justify-between items-center pt-4 ${colors.mainText}">
+                        <span class="text-lg font-bold">TOTAL</span>
+                        <span class="text-xl font-bold text-emerald-400">${formatCurrency(report.total)}</span>
+                    </div>
+                `;
+            };
+
+            const handleViewReport = async (id) => {
+                const reports = await getReportsFromFirestore();
+                const report = reports.find(r => r.id === id);
+                if (!report) return;
+                const reportBaseHtml = getReportHtml(report, 'dark');
+                const modalHtml = `
+                    ${reportBaseHtml}
+                    <div class="flex justify-end gap-4 pt-4 mt-4 border-t border-slate-700">
+                        <button data-close-modal class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-md transition">Cerrar</button>
+                    </div>
+                `;
+                viewReportContent.innerHTML = modalHtml;
+                openModal(viewReportModal);
+            };
+            
+            const handlePrintReport = async (id) => {
+                const reports = await getReportsFromFirestore();
+                const report = reports.find(r => r.id === id);
+                if (!report) return;
+                printArea.innerHTML = getReportHtml(report, 'light');
+                window.print();
+                printArea.innerHTML = '';
+            };
+
+            const getCounterHtmlForPrint = () => {
+                const activeItems = Object.values(counts).filter(item => item.count > 0);
+                if (activeItems.length === 0) return '';
+                const breakdownHtml = activeItems.map(item => `<div class="flex justify-between items-center"><span>${item.count} x ${formatCurrency(item.value)}</span><span class="font-semibold">${formatCurrency(item.count * item.value)}</span></div>`).join('');
+                const total = activeItems.reduce((sum, item) => sum + (item.count * item.value), 0);
+                return `<h3 class="text-2xl font-bold mb-4">Resumen del Conteo</h3><div class="space-y-2 py-4 border-y border-gray-300">${breakdownHtml}</div><div class="flex justify-between items-center pt-4"><span class="text-lg font-bold">TOTAL</span><span class="text-xl font-bold">${formatCurrency(total)}</span></div>`;
+            };
+
+            const handlePrint = () => {
+                const printContent = getCounterHtmlForPrint();
+                if (printContent === '') {
+                    showToast('No hay nada que imprimir', true);
+                    return;
+                }
+                printArea.innerHTML = printContent;
+                window.print();
+                printArea.innerHTML = '';
+            };
+
+            const handleExportAll = async () => {
+                const reports = await getReportsFromFirestore();
+                if (reports.length === 0) {
+                    showToast('No hay informes para exportar', true);
+                    return;
+                }
+                const csvContent = ['Título,Fecha,Total', ...reports.map(r => `"${r.title}","${r.date}","${r.total}"`)].join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'informes-clp.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Informes exportados');
+            };
+
+            // --- EVENT LISTENERS ---
+            document.querySelector('main').addEventListener('click', handleInteraction);
+            document.querySelector('main').addEventListener('input', handleInteraction);
+            document.querySelector('main').addEventListener('focusout', handleInputBlur);
+            document.querySelectorAll('.section-header').forEach(header => header.addEventListener('click', handleToggleSection));
+            resetButton.addEventListener('click', handleReset);
+            gridBtn.addEventListener('click', () => setViewMode('grid'));
+            listBtn.addEventListener('click', () => setViewMode('list'));
+            hamburgerBtn.addEventListener('click', () => toggleMenu());
+            navLinks.forEach(link => link.addEventListener('click', (e) => {
+                e.preventDefault();
+                showPage(link.dataset.page);
+            }));
+            saveReportBtn.addEventListener('click', () => {
+                reportTitleInput.value = '';
+                reportDateInput.value = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '•');
+                openModal(saveModal);
+            });
+            
+            printBtn.addEventListener('click', handlePrint);
+            exportAllBtn.addEventListener('click', handleExportAll);
+            
+            reportsListContainer.addEventListener('click', (e) => {
+                const viewBtn = e.target.closest('.view-report-btn');
+                const deleteBtn = e.target.closest('.delete-report-btn');
+                const printBtn = e.target.closest('.print-report-btn');
+
+                if (viewBtn) handleViewReport(viewBtn.dataset.reportId);
+                if (deleteBtn) handleDeleteReport(deleteBtn.dataset.reportId);
+                if (printBtn) handlePrintReport(printBtn.dataset.reportId);
+            });
+            
+            confirmSaveBtn.addEventListener('click', handleSaveReport);
+
+            termsLink.addEventListener('click', (e) => { e.preventDefault(); openModal(termsModal); });
+            privacyLink.addEventListener('click', (e) => { e.preventDefault(); openModal(privacyModal); });
+            contactLink.addEventListener('click', (e) => { e.preventDefault(); openModal(contactModal); });
+
+            // Delegated event listener for closing modals and the mobile menu
+            document.addEventListener('click', (e) => {
+                if (e.target.matches('.modal-overlay')) {
+                    if (e.target.id === 'mobile-menu-overlay') {
+                        toggleMenu(true);
+                    } else {
+                        closeModal(e.target);
+                    }
+                }
+                
+                const closeButton = e.target.closest('[data-close-modal]');
+                if (closeButton) {
+                    closeModal(closeButton.closest('.modal-overlay'));
+                }
+            });
+            
+            // CAMBIO: Event listeners para los botones de monto de donación
+            donationAmountBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const amount = e.target.dataset.amount;
+                    donationAmountInput.value = parseFloat(amount).toFixed(2);
+                    donationAmountBtns.forEach(b => b.classList.remove('is-active'));
+                    e.target.classList.add('is-active');
+                });
+            });
+
+            donationAmountInput.addEventListener('input', () => {
+                const currentValue = parseFloat(donationAmountInput.value).toFixed(2);
+                donationAmountBtns.forEach(btn => {
+                    const btnAmount = parseFloat(btn.dataset.amount).toFixed(2);
+                    btn.classList.toggle('is-active', btnAmount === currentValue);
+                });
+            });
+
+
+            // --- INICIALIZACIÓN ---
+            renderCards();
+            setViewMode('grid');
+            showPage('contador');
+
+            // --- PAYPAL BUTTONS INITIALIZATION ---
+            try {
+                paypal.Buttons({
+                    style: {
+                        shape: 'rect',
+                        color: 'gold',
+                        layout: 'vertical',
+                        label: 'donate',
+                    },
+                    createOrder: function(data, actions) {
+                        // CAMBIO: Leer el valor del input de donación
+                        const donationAmountInput = document.getElementById('donation-amount');
+                        let amountValue = parseFloat(donationAmountInput.value).toFixed(2);
+
+                        // Validación para asegurarse de que el monto es válido
+                        if (isNaN(amountValue) || amountValue < 1.00) {
+                            amountValue = '1.00'; // PayPal requiere un monto mínimo
+                            window.showToast('El monto mínimo de donación es $1.00 USD', true);
+                        }
+
+                        const donationNicknameInput = document.getElementById('donation-nickname');
+                        const donationMessageInput = document.getElementById('donation-message');
+                        const customData = {
+                            nick: donationNicknameInput.value.trim(),
+                            msg: donationMessageInput.value.trim()
+                        };
+                        const encodedData = btoa(JSON.stringify(customData));
+
+                        return actions.order.create({
+                            purchase_units: [{
+                                amount: {
+                                    value: amountValue, // Usar el valor dinámico
+                                    currency_code: 'USD'
+                                },
+                                custom_id: encodedData
+                            }],
+                            application_context: {
+                                shipping_preference: 'NO_SHIPPING'
+                            }
+                        });
+                    },
+                    onApprove: function(data, actions) {
+                        return actions.order.capture().then(function(details) {
+                            const name = details.payer.name.given_name;
+                            showToast(`¡Gracias por tu donación, ${name}!`);
+                            // El webhook se encargará de guardar los datos en segundo plano.
+                        });
+                    },
+                    onError: function(err) {
+                        console.error('Error con los botones de PayPal:', err);
+                        showToast('Ocurrió un error al procesar la donación.', true);
+                    }
+                }).render('#paypal-button-container');
+            } catch (error) {
+                console.error("Error al renderizar botones de PayPal:", error);
+                const container = document.getElementById('paypal-button-container');
+                if (container) {
+                    container.innerHTML = '<p class="text-center text-red-400">Error al cargar botones de donación.</p>';
+                }
+            }
+        });
+    </script>
+    
+    <!-- PAYPAL SDK SCRIPT: Añadido al final del body -->
+    <script src="https://www.paypal.com/sdk/js?client-id=AeCGdE2dxBGe8nx4TvuiwfJFTHtb9XELfOh6VjmJPzeqPHeWwOU-F9WLNi7o1Wut-7Egj2-5D7dkunq-&currency=USD&intent=capture"></script>
+
+</body>
+</html>
+
