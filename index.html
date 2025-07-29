@@ -514,7 +514,6 @@
                                 <label for="donation-message" class="block text-sm font-medium text-slate-300 mb-1">Mensaje (Opcional)</label>
                                 <textarea id="donation-message" rows="3" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="¡Gracias por la app!"></textarea>
                             </div>
-                            <!-- CAMBIO: Sección para elegir el monto de donación -->
                             <div>
                                 <label for="donation-amount" class="block text-sm font-medium text-slate-300 mb-2">Elige un monto (USD)</label>
                                 <div id="donation-amount-buttons" class="flex gap-2 mb-3">
@@ -529,13 +528,14 @@
                             </div>
                         </div>
 
-                        <!-- PAYPAL BUTTON CONTAINER: Se mantiene igual, pero la lógica que lo usa cambiará -->
-                        <div id="paypal-button-container" class="mt-4"></div>
+                        <!-- CAMBIO: Contenedor de PayPal envuelto para controlar el z-index -->
+                        <div class="relative z-10">
+                            <div id="paypal-button-container" class="mt-4"></div>
+                        </div>
                         <p class="text-xs text-slate-500 mt-2 text-center">Las donaciones se procesan de forma segura con PayPal.</p>
 
                     </div>
 
-                    <!-- CAMBIO: Contenedor para la lista de últimas donaciones -->
                     <div class="mt-8">
                         <h4 class="text-xl font-bold text-white mb-4">Últimas Donaciones</h4>
                         <div id="donations-list" class="space-y-4">
@@ -1066,7 +1066,7 @@
         }
       });
 
-      // --- CAMBIO: LÓGICA DE DONACIONES MEJORADA ---
+      // --- LÓGICA DE DONACIONES MEJORADA ---
       const donationsRef = collection(db, "donations");
       const q = query(donationsRef, orderBy("createdAt", "desc"), limit(3)); // Fetch last 3
       const donationsListContainer = document.getElementById('donations-list');
@@ -1086,10 +1086,8 @@
                 const nickname = donation.nickname || 'Anónimo';
                 const message = donation.message || '¡Gracias por el apoyo!';
                 
-                // Format amount - assuming it's stored in a field like 'amount'
                 const amount = donation.amount ? `$${parseFloat(donation.amount).toFixed(2)} USD` : '';
 
-                // Format date
                 let dateString = '';
                 if (donation.createdAt && typeof donation.createdAt.toDate === 'function') {
                     dateString = donation.createdAt.toDate().toLocaleDateString('es-CL', {
@@ -1675,7 +1673,6 @@
                 }
             });
             
-            // CAMBIO: Event listeners para los botones de monto de donación
             donationAmountBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const amount = e.target.dataset.amount;
@@ -1709,13 +1706,11 @@
                         label: 'donate',
                     },
                     createOrder: function(data, actions) {
-                        // CAMBIO: Leer el valor del input de donación
                         const donationAmountInput = document.getElementById('donation-amount');
                         let amountValue = parseFloat(donationAmountInput.value).toFixed(2);
 
-                        // Validación para asegurarse de que el monto es válido
                         if (isNaN(amountValue) || amountValue < 1.00) {
-                            amountValue = '1.00'; // PayPal requiere un monto mínimo
+                            amountValue = '1.00'; 
                             window.showToast('El monto mínimo de donación es $1.00 USD', true);
                         }
 
@@ -1730,7 +1725,7 @@
                         return actions.order.create({
                             purchase_units: [{
                                 amount: {
-                                    value: amountValue, // Usar el valor dinámico
+                                    value: amountValue, 
                                     currency_code: 'USD'
                                 },
                                 custom_id: encodedData
@@ -1744,7 +1739,6 @@
                         return actions.order.capture().then(function(details) {
                             const name = details.payer.name.given_name;
                             showToast(`¡Gracias por tu donación, ${name}!`);
-                            // El webhook se encargará de guardar los datos en segundo plano.
                         });
                     },
                     onError: function(err) {
