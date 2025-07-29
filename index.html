@@ -535,20 +535,13 @@
 
                     </div>
 
-                    <div id="last-donation-container" class="mt-8">
-                        <h4 class="text-xl font-bold text-white mb-4">Última Donación</h4>
-                        <div id="last-donation-card" class="bg-slate-800/50 p-6 rounded-2xl shadow-lg text-left hidden">
-                            <div class="flex items-start gap-4">
-                                <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-emerald-500 rounded-full text-white text-2xl font-bold">
-                                    <span id="donation-initial">A</span>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-white" id="donation-name">Anónimo</p>
-                                    <p class="text-slate-300 italic">"¡Gracias por esta increíble herramienta!"</p>
-                                </div>
-                            </div>
+                    <!-- CAMBIO: Contenedor para la lista de últimas donaciones -->
+                    <div class="mt-8">
+                        <h4 class="text-xl font-bold text-white mb-4">Últimas Donaciones</h4>
+                        <div id="donations-list" class="space-y-4">
+                            <!-- Las tarjetas de donación se insertarán aquí dinámicamente -->
                         </div>
-                         <div id="no-donation-card" class="bg-slate-800/50 p-6 rounded-2xl shadow-lg text-center">
+                        <div id="no-donation-card" class="bg-slate-800/50 p-6 rounded-2xl shadow-lg text-center hidden">
                             <p class="text-slate-400">Aún no hay donaciones. ¡Sé el primero en apoyar!</p>
                         </div>
                     </div>
@@ -1073,28 +1066,58 @@
         }
       });
 
-      // --- LÓGICA DE DONACIONES ---
+      // --- CAMBIO: LÓGICA DE DONACIONES MEJORADA ---
       const donationsRef = collection(db, "donations");
-      const q = query(donationsRef, orderBy("createdAt", "desc"), limit(1));
-      const lastDonationCard = document.getElementById('last-donation-card');
+      const q = query(donationsRef, orderBy("createdAt", "desc"), limit(3)); // Fetch last 3
+      const donationsListContainer = document.getElementById('donations-list');
       const noDonationCard = document.getElementById('no-donation-card');
-      const donationInitial = document.getElementById('donation-initial');
-      const donationName = document.getElementById('donation-name');
-      const donationMessage = lastDonationCard.querySelector('p.text-slate-300');
 
       onSnapshot(q, (snapshot) => {
         if (snapshot.empty) {
-            lastDonationCard.classList.add('hidden');
+            donationsListContainer.classList.add('hidden');
             noDonationCard.classList.remove('hidden');
         } else {
-            const lastDonation = snapshot.docs[0].data();
-            const nickname = lastDonation.nickname || 'Anónimo';
-            donationInitial.textContent = nickname.charAt(0).toUpperCase();
-            donationName.textContent = nickname;
-            donationMessage.textContent = `"${lastDonation.message || '¡Gracias por el apoyo!'}"`;
-            
+            donationsListContainer.innerHTML = ''; // Clear previous list
+            donationsListContainer.classList.remove('hidden');
             noDonationCard.classList.add('hidden');
-            lastDonationCard.classList.remove('hidden');
+
+            snapshot.docs.forEach(doc => {
+                const donation = doc.data();
+                const nickname = donation.nickname || 'Anónimo';
+                const message = donation.message || '¡Gracias por el apoyo!';
+                
+                // Format amount - assuming it's stored in a field like 'amount'
+                const amount = donation.amount ? `$${parseFloat(donation.amount).toFixed(2)} USD` : '';
+
+                // Format date
+                let dateString = '';
+                if (donation.createdAt && typeof donation.createdAt.toDate === 'function') {
+                    dateString = donation.createdAt.toDate().toLocaleDateString('es-CL', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                }
+
+                const cardHTML = `
+                <div class="bg-slate-800/50 p-6 rounded-2xl shadow-lg text-left">
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-emerald-500 rounded-full text-white text-2xl font-bold">
+                            <span>${nickname.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-center flex-wrap gap-2">
+                                <p class="font-bold text-white">${nickname}</p>
+                                ${amount ? `<p class="font-bold text-lg text-emerald-400">${amount}</p>` : ''}
+                            </div>
+                            <p class="text-slate-300 italic mt-1">"${message}"</p>
+                            ${dateString ? `<p class="text-xs text-slate-500 text-right mt-2">${dateString}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+                `;
+                donationsListContainer.innerHTML += cardHTML;
+            });
         }
       });
 
