@@ -276,7 +276,6 @@
             white-space: nowrap;
         }
 
-
         /* --- Nuevos estilos para mejoras --- */
         .quick-add-buttons {
             display: flex;
@@ -510,20 +509,18 @@
                                 <label for="donation-message" class="block text-sm font-medium text-slate-300 mb-1">Mensaje (Opcional)</label>
                                 <textarea id="donation-message" rows="3" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="¡Gracias por la app!"></textarea>
                             </div>
-                            <!-- CAMBIO: Sección de donación en CLP -->
+                            <!-- CAMBIO: Sección de donación en CLP con conversión en vivo -->
                             <div>
-                                <div class="flex justify-between items-baseline mb-2">
-                                     <label for="donation-amount-clp" class="block text-sm font-medium text-slate-300">Elige un monto (CLP)</label>
-                                     <span id="donation-usd-equivalent" class="text-xs text-slate-400"></span>
-                                </div>
+                                <label for="donation-amount-clp" class="block text-sm font-medium text-slate-300 mb-2">Elige un monto (CLP)</label>
                                 <div id="donation-amount-buttons" class="flex gap-2 mb-3">
                                     <button data-amount="5000" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition is-active">$5.000</button>
                                     <button data-amount="10000" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition">$10.000</button>
                                     <button data-amount="20000" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition">$20.000</button>
                                 </div>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-lg">$</span>
-                                    <input type="number" id="donation-amount-clp" class="w-full bg-slate-700 border border-slate-600 rounded-md p-3 pl-7 text-white text-lg font-bold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Otro monto" value="5000" min="1000" step="1000">
+                                <div class="relative flex items-center bg-slate-700 border border-slate-600 rounded-md focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500">
+                                    <span class="pl-3 text-slate-400 text-lg">$</span>
+                                    <input type="number" id="donation-amount-clp" class="flex-grow bg-transparent p-3 pl-1 text-white text-lg font-bold outline-none" placeholder="Otro monto" value="5000" min="1000" step="1000">
+                                    <span id="donation-usd-equivalent" class="pr-3 text-sm text-slate-400 whitespace-nowrap"></span>
                                 </div>
                             </div>
                         </div>
@@ -1173,11 +1170,10 @@
             const toastMessage = document.getElementById('toast-message');
             const printArea = document.getElementById('print-area');
             
-            // --- CAMBIO: Selectores y constantes para donación en CLP ---
             const donationAmountInputCLP = document.getElementById('donation-amount-clp');
             const donationAmountBtns = document.querySelectorAll('.donation-amount-btn');
             const donationUsdEquivalentEl = document.getElementById('donation-usd-equivalent');
-            const CLP_TO_USD_RATE = 1 / 930; // Tasa de cambio estática. Idealmente, se obtiene de una API.
+            const CLP_TO_USD_RATE = 1 / 930; 
             
             const termsLink = document.getElementById('terms-link');
             const privacyLink = document.getElementById('privacy-link');
@@ -1610,11 +1606,14 @@
                 showToast('Informes exportados');
             };
 
-            // --- CAMBIO: Función para actualizar el display de donación ---
             const updateDonationDisplay = (clpAmount) => {
-                const amount = isNaN(clpAmount) || clpAmount < 1000 ? 1000 : clpAmount;
+                const amount = isNaN(clpAmount) || clpAmount < 1000 ? 0 : clpAmount;
+                if (amount === 0) {
+                    donationUsdEquivalentEl.textContent = '';
+                    return;
+                }
                 const usdAmount = amount * CLP_TO_USD_RATE;
-                donationUsdEquivalentEl.textContent = `aprox. ${formatCurrency(usdAmount, 'USD')}`;
+                donationUsdEquivalentEl.textContent = `(aprox. ${formatCurrency(usdAmount, 'USD')})`;
             };
 
             // --- EVENT LISTENERS ---
@@ -1670,7 +1669,6 @@
                 }
             });
             
-            // --- CAMBIO: Event listeners para donación en CLP ---
             donationAmountBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const amount = e.target.dataset.amount;
@@ -1693,7 +1691,7 @@
             renderCards();
             setViewMode('grid');
             showPage('contador');
-            updateDonationDisplay(parseInt(donationAmountInputCLP.value)); // Inicializar display de donación
+            updateDonationDisplay(parseInt(donationAmountInputCLP.value));
 
             // --- PAYPAL BUTTONS INITIALIZATION ---
             try {
