@@ -200,8 +200,6 @@
             stroke-linecap: round;
             transition: d 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        /* La forma base del ícono ahora está en el HTML. */
-        /* El CSS se encarga de la animación para navegadores compatibles. */
         #hamburger-btn .line-top { d: path("M 4 8 H 28"); }
         #hamburger-btn .line-middle { d: path("M 4 16 H 28"); }
         #hamburger-btn .line-bottom { d: path("M 4 24 H 28"); }
@@ -302,7 +300,6 @@
             transform: translateY(-1px);
         }
         
-        /* NUEVO: Estilo para botones de monto de donación */
         .donation-amount-btn.is-active {
             background-color: #16a34a; /* Verde esmeralda */
             color: #fff;
@@ -354,7 +351,6 @@
     <!-- BOTÓN DE MENÚ HAMBURGUESA FIJO -->
     <button id="hamburger-btn" class="fixed top-6 left-6 p-2 z-50 no-print hamburger-btn">
         <svg class="hamburger-icon text-slate-300" viewBox="0 0 32 32">
-            <!-- CAMBIO: Se añade el atributo 'd' para compatibilidad -->
             <path class="line line-top" d="M 4 8 H 28"></path>
             <path class="line line-middle" d="M 4 16 H 28"></path>
             <path class="line line-bottom" d="M 4 24 H 28"></path>
@@ -514,25 +510,28 @@
                                 <label for="donation-message" class="block text-sm font-medium text-slate-300 mb-1">Mensaje (Opcional)</label>
                                 <textarea id="donation-message" rows="3" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="¡Gracias por la app!"></textarea>
                             </div>
+                            <!-- CAMBIO: Sección de donación en CLP -->
                             <div>
-                                <label for="donation-amount" class="block text-sm font-medium text-slate-300 mb-2">Elige un monto (USD)</label>
+                                <div class="flex justify-between items-baseline mb-2">
+                                     <label for="donation-amount-clp" class="block text-sm font-medium text-slate-300">Elige un monto (CLP)</label>
+                                     <span id="donation-usd-equivalent" class="text-xs text-slate-400"></span>
+                                </div>
                                 <div id="donation-amount-buttons" class="flex gap-2 mb-3">
-                                    <button data-amount="5" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition is-active">$5</button>
-                                    <button data-amount="10" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition">$10</button>
-                                    <button data-amount="20" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition">$20</button>
+                                    <button data-amount="5000" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition is-active">$5.000</button>
+                                    <button data-amount="10000" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition">$10.000</button>
+                                    <button data-amount="20000" class="donation-amount-btn flex-1 bg-slate-700 hover:bg-slate-600 p-2 rounded-md transition">$20.000</button>
                                 </div>
                                 <div class="relative">
                                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-lg">$</span>
-                                    <input type="number" id="donation-amount" class="w-full bg-slate-700 border border-slate-600 rounded-md p-3 pl-8 text-white text-lg font-bold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Otro monto" value="5.00" min="1.00" step="1.00">
+                                    <input type="number" id="donation-amount-clp" class="w-full bg-slate-700 border border-slate-600 rounded-md p-3 pl-7 text-white text-lg font-bold focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" placeholder="Otro monto" value="5000" min="1000" step="1000">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- CAMBIO: Contenedor de PayPal envuelto para controlar el z-index -->
                         <div class="relative z-10">
                             <div id="paypal-button-container" class="mt-4"></div>
                         </div>
-                        <p class="text-xs text-slate-500 mt-2 text-center">Las donaciones se procesan de forma segura con PayPal.</p>
+                        <p class="text-xs text-slate-500 text-center -mt-2">Las donaciones se procesan de forma segura con PayPal. <br>El cargo final se realizará en USD.</p>
 
                     </div>
 
@@ -831,7 +830,6 @@
 
       onAuthStateChanged(auth, (user) => {
         if (user && user.emailVerified) {
-          // User is signed in AND verified
           currentUser = user;
           userLoggedInView.classList.remove('hidden');
           userLoggedOutView.classList.add('hidden');
@@ -842,16 +840,15 @@
              window.renderReportsPage();
           }
         } else {
-          // User is signed out or not verified
           currentUser = null;
           userLoggedInView.classList.add('hidden');
           userLoggedOutView.classList.remove('hidden');
-          window.renderReportsPage(); // Esto limpiará la lista o mostrará el mensaje de login
+          window.renderReportsPage(); 
         }
       });
       
       emailLoginBtn.addEventListener('click', () => {
-        setupEmailModal(true, false); // Asegurarse de que el modal siempre abra en modo login
+        setupEmailModal(true, false);
         openModal(emailAuthModal);
       });
 
@@ -863,7 +860,7 @@
         signOut(auth).then(() => {
           window.showToast('Sesión cerrada');
           closeModal(logoutConfirmModal);
-          window.toggleMenu(true); // Cierra el menú si está abierto
+          window.toggleMenu(true);
         }).catch((error) => {
           console.error("Error al cerrar sesión:", error);
           window.showToast('Error al cerrar sesión', true);
@@ -879,7 +876,6 @@
         openModal(settingsModal);
       });
 
-      // --- LÓGICA DEL MODAL DE CORREO ---
       const setupEmailModal = (isLogin, isPasswordReset) => {
         isLoginMode = isLogin;
         isPasswordResetMode = isPasswordReset;
@@ -948,7 +944,6 @@
 
         try {
             if (isLoginMode) {
-                // Iniciar Sesión
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 if (!userCredential.user.emailVerified) {
                     await signOut(auth);
@@ -959,13 +954,12 @@
                     window.toggleMenu(true);
                 }
             } else {
-                // Registrarse
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 await updateProfile(userCredential.user, { displayName: name });
                 await sendEmailVerification(userCredential.user);
                 
                 window.showToast('¡Cuenta creada! Revisa tu correo para verificarla.');
-                await signOut(auth); // Desloguear hasta que verifique
+                await signOut(auth);
                 closeModal(emailAuthModal);
             }
         } catch (error) {
@@ -982,11 +976,10 @@
             window.showToast(message, true);
         } finally {
             emailAuthActionBtn.disabled = false;
-            setupEmailModal(isLoginMode, false); // Restaura el estado
+            setupEmailModal(isLoginMode, false);
         }
       });
       
-      // --- LÓGICA DEL MODAL DE AJUSTES Y COOLDOWNS ---
       const checkCooldown = (action, minutes) => {
         const lastActionTime = localStorage.getItem(`last_${action}_time`);
         if (!lastActionTime) return { canPerform: true };
@@ -1066,9 +1059,8 @@
         }
       });
 
-      // --- LÓGICA DE DONACIONES MEJORADA ---
       const donationsRef = collection(db, "donations");
-      const q = query(donationsRef, orderBy("createdAt", "desc"), limit(3)); // Fetch last 3
+      const q = query(donationsRef, orderBy("createdAt", "desc"), limit(3));
       const donationsListContainer = document.getElementById('donations-list');
       const noDonationCard = document.getElementById('no-donation-card');
 
@@ -1077,7 +1069,7 @@
             donationsListContainer.classList.add('hidden');
             noDonationCard.classList.remove('hidden');
         } else {
-            donationsListContainer.innerHTML = ''; // Clear previous list
+            donationsListContainer.innerHTML = '';
             donationsListContainer.classList.remove('hidden');
             noDonationCard.classList.add('hidden');
 
@@ -1119,10 +1111,7 @@
         }
       });
 
-
-      // Pasar la instancia de DB a la lógica principal de la app
       window.firebaseInstances = { db, auth };
-      // Pasar funciones para que sean accesibles globalmente
       window.openModal = (modal) => modal.classList.add('is-open');
       window.closeModal = (modal) => modal.classList.remove('is-open');
 
@@ -1131,7 +1120,6 @@
     <!-- App Logic -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- CONFIGURACIÓN INICIAL ---
             const denominations = {
                 coins: [{ value: 10 }, { value: 50 }, { value: 100 }, { value: 500 }],
                 bills: [{ value: 1000 }, { value: 2000 }, { value: 5000 }, { value: 10000 }, { value: 20000 }]
@@ -1149,12 +1137,10 @@
                 20000: { stroke: '#ea580c', fill: '#fb923c' }
             };
 
-            // --- ESTADO DE LA APLICACIÓN ---
             let counts = {};
             let activeCard = null;
             let toastTimeout = null;
 
-            // --- SELECTORES DE DOM ---
             const coinsContainer = document.getElementById('coins-container');
             const billsContainer = document.getElementById('bills-container');
             const grandTotalEl = document.getElementById('grand-total');
@@ -1186,8 +1172,12 @@
             const toast = document.getElementById('toast');
             const toastMessage = document.getElementById('toast-message');
             const printArea = document.getElementById('print-area');
-            const donationAmountInput = document.getElementById('donation-amount');
+            
+            // --- CAMBIO: Selectores y constantes para donación en CLP ---
+            const donationAmountInputCLP = document.getElementById('donation-amount-clp');
             const donationAmountBtns = document.querySelectorAll('.donation-amount-btn');
+            const donationUsdEquivalentEl = document.getElementById('donation-usd-equivalent');
+            const CLP_TO_USD_RATE = 1 / 930; // Tasa de cambio estática. Idealmente, se obtiene de una API.
             
             const termsLink = document.getElementById('terms-link');
             const privacyLink = document.getElementById('privacy-link');
@@ -1196,7 +1186,6 @@
             const privacyModal = document.getElementById('privacy-modal');
             const contactModal = document.getElementById('contact-modal');
             
-            // --- FUNCIONES ---
             window.showToast = (message, isError = false) => {
                 if (toastTimeout) clearTimeout(toastTimeout);
                 toastMessage.textContent = message;
@@ -1207,7 +1196,13 @@
                 }, 4000);
             };
 
-            const formatCurrency = (value) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value);
+            const formatCurrency = (value, currency = 'CLP') => {
+                const options = { style: 'currency', currency };
+                if (currency === 'CLP') {
+                    options.maximumFractionDigits = 0;
+                }
+                return new Intl.NumberFormat('es-CL', options).format(value);
+            }
 
             const getPolygonPoints = (sides, radius, centerX, centerY) => {
                 const points = [];
@@ -1224,7 +1219,7 @@
 
             const getIcon = (value) => {
                 const isBill = value >= 1000;
-                const text = new Intl.NumberFormat('es-CL').format(value);
+                const text = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(value);
                 const colorSet = colors[value];
                 const strokeWidth = 3.5;
                 const commonStyle = `stroke-linecap="round" stroke-linejoin="round" stroke-width="${strokeWidth}"`;
@@ -1281,9 +1276,7 @@
                 if (activeCard && activeCard !== card) {
                     activeCard.classList.remove('is-active');
                 }
-                
                 activeCard = card;
-
                 if (activeCard) {
                     activeCard.classList.add('is-active');
                 }
@@ -1294,15 +1287,13 @@
                 const formattedTotal = formatCurrency(total);
                 grandTotalEl.textContent = formattedTotal;
 
-                // Remove all possible size classes to reset
                 grandTotalEl.classList.remove('text-4xl', 'md:text-5xl', 'text-3xl', 'md:text-4xl', 'text-2xl');
 
-                // Apply new size classes based on length
-                if (formattedTotal.length > 11) { // For very large numbers like $10.000.000
+                if (formattedTotal.length > 11) {
                     grandTotalEl.classList.add('text-2xl', 'md:text-4xl');
-                } else if (formattedTotal.length > 8) { // For large numbers like $100.000
+                } else if (formattedTotal.length > 8) {
                     grandTotalEl.classList.add('text-3xl', 'md:text-5xl');
-                } else { // For smaller numbers
+                } else {
                     grandTotalEl.classList.add('text-4xl', 'md:text-5xl');
                 }
 
@@ -1326,7 +1317,7 @@
                     container.appendChild(createCard(item));
                     updateCardUI(item.value);
                 });
-                updateGrandTotal(false); // Initialize font size correctly
+                updateGrandTotal(false);
             };
 
             const handleInteraction = (e) => {
@@ -1375,7 +1366,7 @@
 
             const setViewMode = (mode) => {
                 [coinsContainer, billsContainer].forEach(container => {
-                    container.className = 'section-content pt-8'; // Reset classes
+                    container.className = 'section-content pt-8';
                     container.classList.add(`view-${mode}`);
                 });
                 viewToggle.classList.toggle('mode-list', mode === 'list');
@@ -1619,6 +1610,13 @@
                 showToast('Informes exportados');
             };
 
+            // --- CAMBIO: Función para actualizar el display de donación ---
+            const updateDonationDisplay = (clpAmount) => {
+                const amount = isNaN(clpAmount) || clpAmount < 1000 ? 1000 : clpAmount;
+                const usdAmount = amount * CLP_TO_USD_RATE;
+                donationUsdEquivalentEl.textContent = `aprox. ${formatCurrency(usdAmount, 'USD')}`;
+            };
+
             // --- EVENT LISTENERS ---
             document.querySelector('main').addEventListener('click', handleInteraction);
             document.querySelector('main').addEventListener('input', handleInteraction);
@@ -1657,7 +1655,6 @@
             privacyLink.addEventListener('click', (e) => { e.preventDefault(); openModal(privacyModal); });
             contactLink.addEventListener('click', (e) => { e.preventDefault(); openModal(contactModal); });
 
-            // Delegated event listener for closing modals and the mobile menu
             document.addEventListener('click', (e) => {
                 if (e.target.matches('.modal-overlay')) {
                     if (e.target.id === 'mobile-menu-overlay') {
@@ -1673,28 +1670,30 @@
                 }
             });
             
+            // --- CAMBIO: Event listeners para donación en CLP ---
             donationAmountBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const amount = e.target.dataset.amount;
-                    donationAmountInput.value = parseFloat(amount).toFixed(2);
+                    donationAmountInputCLP.value = amount;
                     donationAmountBtns.forEach(b => b.classList.remove('is-active'));
                     e.target.classList.add('is-active');
+                    updateDonationDisplay(parseInt(amount));
                 });
             });
 
-            donationAmountInput.addEventListener('input', () => {
-                const currentValue = parseFloat(donationAmountInput.value).toFixed(2);
+            donationAmountInputCLP.addEventListener('input', () => {
+                const clpAmount = parseInt(donationAmountInputCLP.value);
                 donationAmountBtns.forEach(btn => {
-                    const btnAmount = parseFloat(btn.dataset.amount).toFixed(2);
-                    btn.classList.toggle('is-active', btnAmount === currentValue);
+                    btn.classList.toggle('is-active', btn.dataset.amount == clpAmount);
                 });
+                updateDonationDisplay(clpAmount);
             });
-
 
             // --- INICIALIZACIÓN ---
             renderCards();
             setViewMode('grid');
             showPage('contador');
+            updateDonationDisplay(parseInt(donationAmountInputCLP.value)); // Inicializar display de donación
 
             // --- PAYPAL BUTTONS INITIALIZATION ---
             try {
@@ -1706,12 +1705,12 @@
                         label: 'donate',
                     },
                     createOrder: function(data, actions) {
-                        const donationAmountInput = document.getElementById('donation-amount');
-                        let amountValue = parseFloat(donationAmountInput.value).toFixed(2);
+                        const clpAmount = parseInt(donationAmountInputCLP.value);
+                        let usdAmount = (clpAmount * CLP_TO_USD_RATE).toFixed(2);
 
-                        if (isNaN(amountValue) || amountValue < 1.00) {
-                            amountValue = '1.00'; 
-                            window.showToast('El monto mínimo de donación es $1.00 USD', true);
+                        if (isNaN(usdAmount) || usdAmount < 1.00) {
+                            usdAmount = '1.00';
+                            window.showToast('El monto mínimo de donación es $1.00 USD (aprox. $1.000 CLP).', true);
                         }
 
                         const donationNicknameInput = document.getElementById('donation-nickname');
@@ -1725,7 +1724,7 @@
                         return actions.order.create({
                             purchase_units: [{
                                 amount: {
-                                    value: amountValue, 
+                                    value: usdAmount, 
                                     currency_code: 'USD'
                                 },
                                 custom_id: encodedData
